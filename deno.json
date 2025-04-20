@@ -2,9 +2,9 @@
   "name": "@huuma/auth",
   "version": "0.0.1",
   "exports": {
-    ".": "./mod.ts",
-    "./strategy/custom": "./strategy/custom.ts",
-    "./strategy/local": "./strategy/local.ts"
+    ".": "./src/mod.ts",
+    "./strategy/custom": "./src/strategy/custom.ts",
+    "./strategy/local": "./src/strategy/local.ts"
   },
   "imports": {
     "@huuma/route": "jsr:@huuma/route@^0.0.2"
