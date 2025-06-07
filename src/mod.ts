@@ -39,11 +39,10 @@ function protectWith<T>(strategyName: string): Middleware {
     return async (ctx: RequestContext, next: Next): Promise<Response> => {
       try {
         ctx.auth = await authentication<T>(strategy, ctx);
-      } catch (message) {
+      } catch (e) {
+        console.error(e);
         throw new UnauthorizedException(
-          message instanceof Error
-            ? message.message
-            : "Unknown authentication error",
+          e instanceof Error ? e.message : "Unknown authentication error",
         );
       }
       return next();
