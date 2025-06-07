@@ -22,8 +22,8 @@ function authentication<T>(
   return new Promise<T>((resolve, reject) => {
     const attempt = authenticate(ctx, { allow: resolve, deny: reject });
     if (attempt instanceof Promise) {
-      attempt.catch((e: Error) => {
-        reject(e.message);
+      attempt.catch((e) => {
+        reject(e);
       });
     }
   });
