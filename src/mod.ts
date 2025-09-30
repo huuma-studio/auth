@@ -32,7 +32,7 @@ function authentication<T>(
 const strategies: Strategy<unknown>[] = [];
 
 function protectWith<T>(strategyName: string): Middleware {
-  const strategy = <Strategy<T> | undefined> (
+  const strategy = <Strategy<T> | undefined>(
     strategies.find((strategy) => strategy.name == strategyName)
   );
   if (strategy) {
@@ -42,7 +42,11 @@ function protectWith<T>(strategyName: string): Middleware {
       } catch (e) {
         console.error(e);
         throw new UnauthorizedException(
-          e instanceof Error ? e.message : "Unknown authentication error",
+          e instanceof Error
+            ? e.message
+            : typeof e === "string"
+              ? e
+              : "Unknown authentication error",
         );
       }
       return next();

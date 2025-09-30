@@ -1,13 +1,13 @@
 {
   "name": "@huuma/auth",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "exports": {
     ".": "./src/mod.ts",
     "./strategy/custom": "./src/strategy/custom.ts",
     "./strategy/local": "./src/strategy/local.ts"
   },
   "imports": {
-    "@huuma/route": "jsr:@huuma/route@^0.0.2"
+    "@huuma/route": "jsr:@huuma/route@^0.1.0"
   },
   "tasks": {
     "check": "deno check src/**/*.ts"
