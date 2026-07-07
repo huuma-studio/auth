@@ -1,14 +1,14 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import { getSearchParams, RequestContext } from "@huuma/route/http/request";
+import { RequestContext } from "@huuma/route/http/request";
 import { Auth, type Strategy } from "../mod.ts";
 import { LocalStrategy } from "./local.ts";
 
-function createLoginContext(query: string): RequestContext {
+function createLoginContext(body?: unknown): RequestContext {
   const ctx = new RequestContext(
-    new Request(`https://app.example/login${query}`),
+    new Request("https://app.example/login", { method: "POST" }),
     { remoteAddr: { transport: "tcp", hostname: "127.0.0.1", port: 43210 } },
   );
-  ctx.search = getSearchParams(ctx.request);
+  ctx.body = body;
   return ctx;
 }
 
@@ -17,7 +17,13 @@ function authenticate<T>(
   ctx: RequestContext,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    strategy.authenticate(ctx, { allow: resolve, deny: reject });
+    const attempt = strategy.authenticate(ctx, {
+      allow: resolve,
+      deny: reject,
+    });
+    if (attempt instanceof Promise) {
+      attempt.catch(reject);
+    }
   });
 }
 
@@ -27,7 +33,34 @@ Deno.test("LocalStrategy denies when username or password is not submitted", asy
   });
 
   const reason = await assertRejects(() =>
-    authenticate(strategy, createLoginContext("?username=alice"))
+    authenticate(strategy, createLoginContext({ username: "alice" }))
+  );
+
+  assertEquals(reason, '"username" or/and "password" not submitted!');
+});
+
+Deno.test("LocalStrategy denies when the request has no body", async () => {
+  const strategy = new LocalStrategy<string>((_credentials, { allow }) => {
+    allow("someone");
+  });
+
+  const reason = await assertRejects(() =>
+    authenticate(strategy, createLoginContext())
+  );
+
+  assertEquals(reason, '"username" or/and "password" not submitted!');
+});
+
+Deno.test("LocalStrategy denies when submitted credentials are not strings", async () => {
+  const strategy = new LocalStrategy<string>((_credentials, { allow }) => {
+    allow("someone");
+  });
+
+  const reason = await assertRejects(() =>
+    authenticate(
+      strategy,
+      createLoginContext({ username: ["alice"], password: { $ne: "" } }),
+    )
   );
 
   assertEquals(reason, '"username" or/and "password" not submitted!');
@@ -45,7 +78,7 @@ Deno.test("LocalStrategy authenticates when the handler accepts the credentials"
 
   const user = await authenticate(
     strategy,
-    createLoginContext("?username=alice&password=wonderland"),
+    createLoginContext({ username: "alice", password: "wonderland" }),
   );
 
   assertEquals(user, "alice");
@@ -57,7 +90,10 @@ Deno.test("LocalStrategy reports the handler's deny reason", async () => {
   });
 
   const reason = await assertRejects(() =>
-    authenticate(strategy, createLoginContext("?username=alice&password=nope"))
+    authenticate(
+      strategy,
+      createLoginContext({ username: "alice", password: "nope" }),
+    )
   );
 
   assertEquals(reason, "wrong password");
@@ -76,7 +112,7 @@ Deno.test("LocalStrategy authenticates when the handler verifies credentials asy
 
   const user = await authenticate(
     strategy,
-    createLoginContext("?username=alice&password=wonderland"),
+    createLoginContext({ username: "alice", password: "wonderland" }),
   );
 
   assertEquals(user, "alice");
@@ -93,7 +129,7 @@ Deno.test("local strategy protects a route through Auth.protectWith", async () =
       },
     ),
   );
-  const ctx = createLoginContext("?username=alice&password=wonderland");
+  const ctx = createLoginContext({ username: "alice", password: "wonderland" });
 
   const response = await Auth.protectWith("local")(
     ctx,
