@@ -16,11 +16,14 @@ export interface Strategy<T> {
 }
 
 function authentication<T>(
-  { authenticate }: Strategy<T>,
+  strategy: Strategy<T>,
   ctx: RequestContext,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const attempt = authenticate(ctx, { allow: resolve, deny: reject });
+    const attempt = strategy.authenticate(ctx, {
+      allow: resolve,
+      deny: reject,
+    });
     if (attempt instanceof Promise) {
       attempt.catch((e) => {
         reject(e);
