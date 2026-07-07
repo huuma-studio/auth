@@ -81,6 +81,21 @@ Deno.test("Auth.protectWith rethrows errors thrown by a strategy unchanged", asy
   assertFalse(error instanceof UnauthorizedException);
 });
 
+Deno.test("Auth.protectWith rethrows string values thrown by a strategy", async () => {
+  Auth.strategy({
+    name: "string-throw",
+    authenticate: () => {
+      throw "session store unreachable at 10.0.0.5";
+    },
+  });
+
+  const error = await assertRejects(
+    async () => await Auth.protectWith("string-throw")(createContext(), next),
+  );
+
+  assertEquals(error, "session store unreachable at 10.0.0.5");
+});
+
 Deno.test("Auth.protectWith rethrows async strategy rejections unchanged", async () => {
   Auth.strategy({
     name: "async-throw",

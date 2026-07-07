@@ -43,6 +43,10 @@ export interface Strategy<T> {
   ) => Promise<void> | void;
 }
 
+class AuthenticationDenied {
+  constructor(public reason: string) {}
+}
+
 function authentication<T>(
   strategy: Strategy<T>,
   ctx: RequestContext,
@@ -50,7 +54,7 @@ function authentication<T>(
   return new Promise<T>((resolve, reject) => {
     const attempt = strategy.authenticate(ctx, {
       allow: resolve,
-      deny: reject,
+      deny: (reason) => reject(new AuthenticationDenied(reason)),
     });
     if (attempt instanceof Promise) {
       attempt.catch((e) => {
@@ -71,8 +75,8 @@ function protectWith<T>(strategyName: string): Middleware {
       try {
         ctx.auth = await authentication<T>(strategy, ctx);
       } catch (e) {
-        if (typeof e === "string") {
-          throw new UnauthorizedException(e);
+        if (e instanceof AuthenticationDenied) {
+          throw new UnauthorizedException(e.reason);
         }
         throw e;
       }
