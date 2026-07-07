@@ -21,7 +21,7 @@ export class LocalStrategy<T> implements Strategy<T> {
     const password = (<LocalStrategyQuery> ctx.search)?.password;
 
     if (username && password) {
-      this.handler({ username, password }, { allow, deny });
+      return this.handler({ username, password }, { allow, deny });
     }
 
     deny('"username" or/and "password" not submitted!');
