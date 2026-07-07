@@ -1,4 +1,9 @@
-import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import {
+  assertEquals,
+  assertFalse,
+  assertRejects,
+  assertThrows,
+} from "@std/assert";
 import { RequestContext } from "@huuma/route/http/request";
 import { UnauthorizedException } from "@huuma/route/http/exception/unauthorized-exception";
 import { Auth } from "./mod.ts";
@@ -60,22 +65,23 @@ Deno.test("Auth.protectWith supports strategies that allow asynchronously", asyn
   assertEquals(ctx.auth, "session-42");
 });
 
-Deno.test("Auth.protectWith responds unauthorized when a strategy throws", async () => {
+Deno.test("Auth.protectWith rethrows errors thrown by a strategy unchanged", async () => {
   Auth.strategy({
     name: "sync-throw",
     authenticate: () => {
-      throw new Error("token expired");
+      throw new Error("database unreachable at 10.0.0.5");
     },
   });
 
-  await assertRejects(
+  const error = await assertRejects(
     async () => await Auth.protectWith("sync-throw")(createContext(), next),
-    UnauthorizedException,
-    "token expired",
+    Error,
+    "database unreachable at 10.0.0.5",
   );
+  assertFalse(error instanceof UnauthorizedException);
 });
 
-Deno.test("Auth.protectWith responds unauthorized when a strategy rejects asynchronously", async () => {
+Deno.test("Auth.protectWith rethrows async strategy rejections unchanged", async () => {
   Auth.strategy({
     name: "async-throw",
     authenticate: async () => {
@@ -84,9 +90,10 @@ Deno.test("Auth.protectWith responds unauthorized when a strategy rejects asynch
     },
   });
 
-  await assertRejects(
+  const error = await assertRejects(
     async () => await Auth.protectWith("async-throw")(createContext(), next),
-    UnauthorizedException,
+    Error,
     "session lookup failed",
   );
+  assertFalse(error instanceof UnauthorizedException);
 });
