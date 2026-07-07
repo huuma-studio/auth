@@ -15,7 +15,13 @@ function authenticate<T>(
   ctx: RequestContext,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    strategy.authenticate(ctx, { allow: resolve, deny: reject });
+    const attempt = strategy.authenticate(ctx, {
+      allow: resolve,
+      deny: reject,
+    });
+    if (attempt instanceof Promise) {
+      attempt.catch(reject);
+    }
   });
 }
 

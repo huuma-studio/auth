@@ -12,6 +12,6 @@ export class CustomStrategy<T> implements Strategy<T> {
   ) {}
 
   authenticate(ctx: RequestContext, { allow, deny }: Instructions<T>) {
-    this.handler(ctx, { allow, deny });
+    return this.handler(ctx, { allow, deny });
   }
 }
