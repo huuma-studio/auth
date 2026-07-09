@@ -27,7 +27,7 @@ export interface LocalStrategyCredentials {
  *
  * @example
  * ```ts
- * Auth.use(
+ * Auth.strategy(
  *   new LocalStrategy(async ({ username, password }, { allow, deny }) => {
  *     const user = await findUser(username);
  *     if (user && (await verify(user.passwordHash, password))) {

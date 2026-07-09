@@ -27,7 +27,7 @@ function authenticate<T>(
 
 Deno.test("custom strategy authenticates through Authenticator.protectWith", async () => {
   const auth = new Authenticator();
-  auth.use(
+  auth.strategy(
     new CustomStrategy<string>((ctx, { allow, deny }) => {
       if (ctx.request.headers.get("authorization") === "Bearer valid-token") {
         return allow("token-user");

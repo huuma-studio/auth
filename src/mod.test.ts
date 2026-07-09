@@ -18,7 +18,7 @@ const next = () => Promise.resolve(new Response("ok"));
 
 Deno.test("Authenticator.protectWith authenticates the request when the strategy allows", async () => {
   const auth = new Authenticator();
-  auth.use({
+  auth.strategy({
     name: "always-allow",
     authenticate: (_ctx, { allow }) => allow({ id: "user-1" }),
   });
@@ -32,7 +32,7 @@ Deno.test("Authenticator.protectWith authenticates the request when the strategy
 
 Deno.test("Authenticator.protectWith supports strategies that allow asynchronously", async () => {
   const auth = new Authenticator();
-  auth.use({
+  auth.strategy({
     name: "async-allow",
     authenticate: async (_ctx, { allow }) => {
       await Promise.resolve();
@@ -46,7 +46,7 @@ Deno.test("Authenticator.protectWith supports strategies that allow asynchronous
   assertEquals(ctx.auth, "session-42");
 });
 
-Deno.test("Authenticator.use returns the instance for chaining", async () => {
+Deno.test("Authenticator.strategy returns the instance for chaining", async () => {
   const auth = new Authenticator();
   const first: Strategy<string> = {
     name: "first",
@@ -57,8 +57,8 @@ Deno.test("Authenticator.use returns the instance for chaining", async () => {
     authenticate: (_ctx, { allow }) => allow("two"),
   };
 
-  assertEquals(auth.use(first), auth);
-  assertEquals(auth.use(second), auth);
+  assertEquals(auth.strategy(first), auth);
+  assertEquals(auth.strategy(second), auth);
 
   const firstCtx = createContext();
   const secondCtx = createContext();
@@ -71,7 +71,7 @@ Deno.test("Authenticator.use returns the instance for chaining", async () => {
 
 Deno.test("Authenticator.protectWith responds unauthorized with the deny reason", async () => {
   const auth = new Authenticator();
-  auth.use({
+  auth.strategy({
     name: "always-deny",
     authenticate: (_ctx, { deny }) => deny("invalid api key"),
   });
@@ -86,7 +86,7 @@ Deno.test("Authenticator.protectWith responds unauthorized with the deny reason"
 Deno.test("Authenticator.protectWith rethrows errors thrown by a strategy unchanged", async () => {
   const auth = new Authenticator();
   const expected = new Error("database unreachable at 10.0.0.5");
-  auth.use({
+  auth.strategy({
     name: "sync-throw",
     authenticate: () => {
       throw expected;
@@ -104,7 +104,7 @@ Deno.test("Authenticator.protectWith rethrows errors thrown by a strategy unchan
 
 Deno.test("Authenticator.protectWith rethrows string values thrown by a strategy", async () => {
   const auth = new Authenticator();
-  auth.use({
+  auth.strategy({
     name: "string-throw",
     authenticate: () => {
       throw "session store unreachable at 10.0.0.5";
@@ -121,7 +121,7 @@ Deno.test("Authenticator.protectWith rethrows string values thrown by a strategy
 Deno.test("Authenticator.protectWith rethrows async strategy rejections unchanged", async () => {
   const auth = new Authenticator();
   const expected = new Error("session lookup failed");
-  auth.use({
+  auth.strategy({
     name: "async-throw",
     authenticate: async () => {
       await Promise.resolve();
@@ -138,7 +138,7 @@ Deno.test("Authenticator.protectWith rethrows async strategy rejections unchange
   assertFalse(error instanceof UnauthorizedException);
 });
 
-Deno.test("Authenticator.use throws when a strategy with the same name is already registered", async () => {
+Deno.test("Authenticator.strategy throws when a strategy with the same name is already registered", async () => {
   const auth = new Authenticator();
   const first: Strategy<string> = {
     name: "foo",
@@ -149,10 +149,10 @@ Deno.test("Authenticator.use throws when a strategy with the same name is alread
     authenticate: (_ctx, { allow }) => allow("second"),
   };
 
-  auth.use(first);
+  auth.strategy(first);
 
   assertThrows(
-    () => auth.use(duplicate),
+    () => auth.strategy(duplicate),
     Error,
     'A strategy named "foo" is already registered',
   );
@@ -172,31 +172,10 @@ Deno.test("Authenticator.protectWith reports the missing strategy name", () => {
   );
 });
 
-Deno.test("Authenticator.disuse removes a strategy so protectWith throws for it", () => {
-  const auth = new Authenticator();
-  auth.use({
-    name: "foo",
-    authenticate: (_ctx, { allow }) => allow("first"),
-  });
-
-  assertEquals(auth.disuse("foo"), auth);
-  assertThrows(
-    () => auth.protectWith("foo"),
-    Error,
-    'No strategy registered for "foo"',
-  );
-});
-
-Deno.test("Authenticator.disuse is a no-op for names that were never registered", () => {
-  const auth = new Authenticator();
-
-  assertEquals(auth.disuse("ghost"), auth);
-});
-
 Deno.test("Authenticator instances are isolated", async () => {
   const first = new Authenticator();
   const second = new Authenticator();
-  first.use({
+  first.strategy({
     name: "x",
     authenticate: (_ctx, { allow }) => allow("from-first"),
   });
@@ -215,7 +194,7 @@ Deno.test("Authenticator instances are isolated", async () => {
 Deno.test("Auth is a shared Authenticator instance", async () => {
   assertEquals(Auth instanceof Authenticator, true);
 
-  Auth.use({
+  Auth.strategy({
     name: "auth-singleton-pin",
     authenticate: (_ctx, { allow }) => allow("singleton-user"),
   });

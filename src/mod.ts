@@ -1,7 +1,7 @@
 /**
  * Authentication middleware for {@link https://jsr.io/@huuma/route | @huuma/route}.
  *
- * Register a {@linkcode Strategy} with {@linkcode Auth.use} or an
+ * Register a {@linkcode Strategy} with {@linkcode Auth.strategy} or an
  * {@linkcode Authenticator} instance and protect routes with the middleware
  * returned by `protectWith`.
  *
@@ -27,8 +27,9 @@ export interface Instructions<T> {
 }
 
 /**
- * An authentication mechanism, registered via {@linkcode Authenticator.use} or
- * {@linkcode Auth.use} and looked up by its unique `name`.
+ * An authentication mechanism, registered via
+ * {@linkcode Authenticator.strategy} or {@linkcode Auth.strategy} and looked
+ * up by its unique `name`.
  *
  * `authenticate` must settle every attempt by calling `allow` or `deny`, or
  * by throwing. Thrown errors and rejections of a returned promise are treated
@@ -70,7 +71,7 @@ export class Authenticator {
   #strategies = new Map<string, Strategy<unknown>>();
 
   /** Registers a strategy under its `name`. Throws if the name is already taken. */
-  use<T>(strategy: Strategy<T>): this {
+  strategy<T>(strategy: Strategy<T>): this {
     if (this.#strategies.has(strategy.name)) {
       throw new Error(
         `A strategy named "${strategy.name}" is already registered`,
@@ -78,12 +79,6 @@ export class Authenticator {
     }
 
     this.#strategies.set(strategy.name, strategy);
-    return this;
-  }
-
-  /** Removes a registered strategy. No-op if the name was never registered. */
-  disuse(name: string): this {
-    this.#strategies.delete(name);
     return this;
   }
 
@@ -119,7 +114,7 @@ export class Authenticator {
 /**
  * Default shared authenticator instance, kept for ergonomic one-app usage.
  *
- * `Auth.use(strategy)` registers a strategy under its `name`.
+ * `Auth.strategy(strategy)` registers a strategy under its `name`.
  * `Auth.protectWith(name)` returns a middleware that runs the strategy.
  */
 export const Auth: Authenticator = new Authenticator();

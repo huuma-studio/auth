@@ -120,7 +120,7 @@ Deno.test("LocalStrategy authenticates when the handler verifies credentials asy
 
 Deno.test("local strategy protects a route through Authenticator.protectWith", async () => {
   const auth = new Authenticator();
-  auth.use(
+  auth.strategy(
     new LocalStrategy<{ username: string }>(
       ({ username, password }, { allow, deny }) => {
         if (username === "alice" && password === "wonderland") {
