@@ -99,6 +99,26 @@ Auth.strategy(apiKey);
 Strategies are looked up by `name`, so each registered strategy needs a unique
 one.
 
+## Multiple apps or test isolation
+
+Use `Authenticator` directly when you need isolated strategy registries for
+multiple apps in one process or per-test isolation.
+
+```ts
+import { Authenticator } from "@huuma/auth";
+import { CustomStrategy } from "@huuma/auth/strategy/custom";
+
+const auth = new Authenticator();
+auth.strategy(
+  new CustomStrategy((ctx, { allow, deny }) => {
+    const token = ctx.request.headers.get("authorization");
+    token === "Bearer secret" ? allow({ id: 1 }) : deny("invalid token");
+  }),
+);
+
+app.get("/profile", { middleware: [auth.protectWith("custom")] }, handler);
+```
+
 ## Development
 
 ```sh

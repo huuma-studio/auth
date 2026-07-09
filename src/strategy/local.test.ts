@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { RequestContext } from "@huuma/route/http/request";
-import { Auth, type Strategy } from "../mod.ts";
+import { Authenticator, type Strategy } from "../mod.ts";
 import { LocalStrategy } from "./local.ts";
 
 function createLoginContext(body?: unknown): RequestContext {
@@ -118,8 +118,9 @@ Deno.test("LocalStrategy authenticates when the handler verifies credentials asy
   assertEquals(user, "alice");
 });
 
-Deno.test("local strategy protects a route through Auth.protectWith", async () => {
-  Auth.strategy(
+Deno.test("local strategy protects a route through Authenticator.protectWith", async () => {
+  const auth = new Authenticator();
+  auth.strategy(
     new LocalStrategy<{ username: string }>(
       ({ username, password }, { allow, deny }) => {
         if (username === "alice" && password === "wonderland") {
@@ -131,7 +132,7 @@ Deno.test("local strategy protects a route through Auth.protectWith", async () =
   );
   const ctx = createLoginContext({ username: "alice", password: "wonderland" });
 
-  const response = await Auth.protectWith("local")(
+  const response = await auth.protectWith("local")(
     ctx,
     () => Promise.resolve(new Response("welcome")),
   );

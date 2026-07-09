@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { RequestContext } from "@huuma/route/http/request";
-import { Auth, type Strategy } from "../mod.ts";
+import { Authenticator, type Strategy } from "../mod.ts";
 import { CustomStrategy } from "./custom.ts";
 
 function createContext(init?: RequestInit): RequestContext {
@@ -25,8 +25,9 @@ function authenticate<T>(
   });
 }
 
-Deno.test("custom strategy authenticates through Auth.protectWith", async () => {
-  Auth.strategy(
+Deno.test("custom strategy authenticates through Authenticator.protectWith", async () => {
+  const auth = new Authenticator();
+  auth.strategy(
     new CustomStrategy<string>((ctx, { allow, deny }) => {
       if (ctx.request.headers.get("authorization") === "Bearer valid-token") {
         return allow("token-user");
@@ -38,7 +39,7 @@ Deno.test("custom strategy authenticates through Auth.protectWith", async () => 
     headers: { authorization: "Bearer valid-token" },
   });
 
-  const response = await Auth.protectWith("custom")(
+  const response = await auth.protectWith("custom")(
     ctx,
     () => Promise.resolve(new Response("ok")),
   );
