@@ -34,6 +34,9 @@ export interface Instructions<T> {
  * `authenticate` must settle every attempt by calling `allow` or `deny`, or
  * by throwing. Thrown errors and rejections of a returned promise are treated
  * as unexpected failures and rethrown to the framework's exception handling.
+ * This contract is enforced: a strategy that returns (or resolves) without
+ * having called `allow` or `deny` rejects the attempt with an `Error` — an
+ * unexpected failure, not a denial — instead of hanging the request.
  */
 export interface Strategy<T> {
   /** Unique name the strategy is registered and looked up by. */
@@ -49,19 +52,37 @@ class AuthenticationDenied {
   constructor(public reason: string) {}
 }
 
+const NEVER_SETTLED_MESSAGE = "Strategy returned without calling allow or deny";
+
 function authentication<T>(
   strategy: Strategy<T>,
   ctx: RequestContext,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
+    let settled = false;
     const attempt = strategy.authenticate(ctx, {
-      allow: resolve,
-      deny: (reason) => reject(new AuthenticationDenied(reason)),
+      allow: (entity) => {
+        settled = true;
+        resolve(entity);
+      },
+      deny: (reason) => {
+        settled = true;
+        reject(new AuthenticationDenied(reason));
+      },
     });
     if (attempt instanceof Promise) {
-      attempt.catch((e) => {
-        reject(e);
-      });
+      attempt.then(
+        () => {
+          if (!settled) {
+            reject(new Error(NEVER_SETTLED_MESSAGE));
+          }
+        },
+        (e) => {
+          reject(e);
+        },
+      );
+    } else if (!settled) {
+      reject(new Error(NEVER_SETTLED_MESSAGE));
     }
   });
 }

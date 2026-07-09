@@ -191,6 +191,75 @@ Deno.test("Authenticator instances are isolated", async () => {
   assertEquals(ctx.auth, "from-first");
 });
 
+function withSettleGuard<T>(run: () => T | Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const neverSettled = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error("middleware never settled")),
+      250,
+    );
+  });
+  return Promise.race([Promise.resolve(run()), neverSettled]).finally(() =>
+    clearTimeout(timeoutId)
+  );
+}
+
+Deno.test("Authenticator.protectWith rejects when a sync strategy returns without settling", async () => {
+  const auth = new Authenticator();
+  auth.strategy({
+    name: "sync-never-settle",
+    authenticate: () => {},
+  });
+
+  const error = await assertRejects(
+    () =>
+      withSettleGuard(() =>
+        auth.protectWith("sync-never-settle")(createContext(), next)
+      ),
+    Error,
+    "without calling allow or deny",
+  );
+  assertFalse(error instanceof UnauthorizedException);
+});
+
+Deno.test("Authenticator.protectWith rejects when an async strategy resolves without settling", async () => {
+  const auth = new Authenticator();
+  auth.strategy({
+    name: "async-never-settle",
+    authenticate: async () => {
+      await Promise.resolve();
+    },
+  });
+
+  const error = await assertRejects(
+    () =>
+      withSettleGuard(() =>
+        auth.protectWith("async-never-settle")(createContext(), next)
+      ),
+    Error,
+    "without calling allow or deny",
+  );
+  assertFalse(error instanceof UnauthorizedException);
+});
+
+Deno.test("Authenticator.protectWith still authenticates when a strategy rejects after allow", async () => {
+  const auth = new Authenticator();
+  auth.strategy({
+    name: "late-reject",
+    authenticate: async (_ctx, { allow }) => {
+      allow("user-1");
+      await Promise.resolve();
+      throw new Error("late failure");
+    },
+  });
+  const ctx = createContext();
+
+  const response = await auth.protectWith("late-reject")(ctx, next);
+
+  assertEquals(ctx.auth, "user-1");
+  assertEquals(await response.text(), "ok");
+});
+
 Deno.test("Auth is a shared Authenticator instance", async () => {
   assertEquals(Auth instanceof Authenticator, true);
 
