@@ -17,7 +17,7 @@ import type { Instructions, Strategy } from "../mod.ts";
  *
  * @example
  * ```ts
- * Auth.strategy(
+ * Auth.use(
  *   new CustomStrategy(async (ctx, { allow, deny }) => {
  *     const session = await findSession(ctx.request.headers.get("cookie"));
  *     session ? allow(session.user) : deny("invalid session");

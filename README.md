@@ -16,7 +16,7 @@ deno add jsr:@huuma/auth
 import { Auth } from "@huuma/auth";
 import { CustomStrategy } from "@huuma/auth/strategy/custom";
 
-Auth.strategy(
+Auth.use(
   new CustomStrategy(async (ctx, { allow, deny }) => {
     const session = await findSession(ctx.request.headers.get("cookie"));
     session ? allow(session.user) : deny("invalid session");
@@ -57,7 +57,7 @@ import { LocalStrategy } from "@huuma/auth/strategy/local";
 
 app.middleware(bodyParser());
 
-Auth.strategy(
+Auth.use(
   new LocalStrategy(async ({ username, password }, { allow, deny }) => {
     const user = await findUser(username);
     if (user && (await verify(user.passwordHash, password))) {
@@ -93,11 +93,32 @@ const apiKey: Strategy<{ client: string }> = {
   },
 };
 
-Auth.strategy(apiKey);
+Auth.use(apiKey);
 ```
 
 Strategies are looked up by `name`, so each registered strategy needs a unique
 one.
+
+## Multiple apps or test isolation
+
+Use `Authenticator` directly when you need isolated strategy registries for
+multiple apps in one process, per-test isolation, or runtime replacement via
+`disuse`.
+
+```ts
+import { Authenticator } from "@huuma/auth";
+import { CustomStrategy } from "@huuma/auth/strategy/custom";
+
+const auth = new Authenticator();
+auth.use(
+  new CustomStrategy((ctx, { allow, deny }) => {
+    const token = ctx.request.headers.get("authorization");
+    token === "Bearer secret" ? allow({ id: 1 }) : deny("invalid token");
+  }),
+);
+
+app.get("/profile", { middleware: [auth.protectWith("custom")] }, handler);
+```
 
 ## Development
 

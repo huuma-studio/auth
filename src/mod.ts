@@ -1,8 +1,9 @@
 /**
  * Authentication middleware for {@link https://jsr.io/@huuma/route | @huuma/route}.
  *
- * Register a {@linkcode Strategy} with {@linkcode Auth.strategy} and protect
- * routes with the middleware returned by {@linkcode Auth.protectWith}.
+ * Register a {@linkcode Strategy} with {@linkcode Auth.use} or an
+ * {@linkcode Authenticator} instance and protect routes with the middleware
+ * returned by `protectWith`.
  *
  * @module
  */
@@ -26,8 +27,8 @@ export interface Instructions<T> {
 }
 
 /**
- * An authentication mechanism, registered via {@linkcode Auth.strategy} and
- * looked up by its unique `name`.
+ * An authentication mechanism, registered via {@linkcode Authenticator.use} or
+ * {@linkcode Auth.use} and looked up by its unique `name`.
  *
  * `authenticate` must settle every attempt by calling `allow` or `deny`, or
  * by throwing. Thrown errors and rejections of a returned promise are treated
@@ -64,13 +65,43 @@ function authentication<T>(
   });
 }
 
-const strategies: Strategy<unknown>[] = [];
+/** Registers authentication strategies and protects routes with them. */
+export class Authenticator {
+  #strategies = new Map<string, Strategy<unknown>>();
 
-function protectWith<T>(strategyName: string): Middleware {
-  const strategy = <Strategy<T> | undefined> (
-    strategies.find((strategy) => strategy.name == strategyName)
-  );
-  if (strategy) {
+  /** Registers a strategy under its `name`. Throws if the name is already taken. */
+  use<T>(strategy: Strategy<T>): this {
+    if (this.#strategies.has(strategy.name)) {
+      throw new Error(
+        `A strategy named "${strategy.name}" is already registered`,
+      );
+    }
+
+    this.#strategies.set(strategy.name, strategy);
+    return this;
+  }
+
+  /** Removes a registered strategy. No-op if the name was never registered. */
+  disuse(name: string): this {
+    this.#strategies.delete(name);
+    return this;
+  }
+
+  /**
+   * Returns a middleware that runs the named strategy: on `allow` the entity is
+   * assigned to `ctx.auth` and the chain continues; on `deny` an
+   * `UnauthorizedException` with the reason is thrown; unexpected errors are
+   * rethrown unchanged. Throws immediately if no strategy is registered under
+   * `name`.
+   */
+  protectWith<T>(strategyName: string): Middleware {
+    const strategy = this.#strategies.get(strategyName) as
+      | Strategy<T>
+      | undefined;
+    if (!strategy) {
+      throw new Error(`No strategy registered for "${strategyName}"`);
+    }
+
     return async (ctx: RequestContext, next: Next): Promise<Response> => {
       try {
         ctx.auth = await authentication<T>(strategy, ctx);
@@ -83,34 +114,12 @@ function protectWith<T>(strategyName: string): Middleware {
       return next();
     };
   }
-  throw Error("Strategy not defined!");
-}
-
-function strategy<T>(strategy: Strategy<T>) {
-  strategies.push(strategy);
 }
 
 /**
- * Registers authentication strategies and protects routes with them.
+ * Default shared authenticator instance, kept for ergonomic one-app usage.
  *
- * `Auth.strategy(strategy)` registers a strategy under its `name`.
- * `Auth.protectWith(name)` returns a middleware that runs the strategy:
- * on `allow` the entity is assigned to `ctx.auth` and the chain continues;
- * on `deny` an `UnauthorizedException` with the reason is thrown; unexpected
- * errors are rethrown unchanged. Throws immediately when no strategy is
- * registered under `name`.
- *
- * @example
- * ```ts
- * Auth.strategy(new CustomStrategy((ctx, { allow, deny }) => {
- *   const token = ctx.request.headers.get("authorization");
- *   token === "Bearer secret" ? allow({ id: 1 }) : deny("invalid token");
- * }));
- *
- * app.get("/profile", { middleware: [Auth.protectWith("custom")] }, handler);
- * ```
+ * `Auth.use(strategy)` registers a strategy under its `name`.
+ * `Auth.protectWith(name)` returns a middleware that runs the strategy.
  */
-export const Auth = {
-  protectWith,
-  strategy,
-};
+export const Auth: Authenticator = new Authenticator();
