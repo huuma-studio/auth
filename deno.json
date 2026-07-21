@@ -1,14 +1,14 @@
 {
   "name": "@huuma/auth",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "exports": {
     ".": "./src/mod.ts",
     "./strategy/custom": "./src/strategy/custom.ts",
     "./strategy/local": "./src/strategy/local.ts"
   },
   "imports": {
-    "@huuma/route": "jsr:@huuma/route@^0.1.0",
-    "@std/assert": "jsr:@std/assert@^1"
+    "@huuma/route": "jsr:@huuma/route@^0.2.0",
+    "@std/assert": "jsr:@std/assert@^1.0.19"
   },
   "publish": {
     "exclude": [".github", "**/*.test.ts"]
@@ -17,5 +17,6 @@
     "check": "deno check src/**/*.ts",
     "doc": "deno doc --lint src/mod.ts src/strategy/custom.ts src/strategy/local.ts",
     "test": "deno test src"
-  }
+  },
+  "minimumDependencyAge": "0"
 }
