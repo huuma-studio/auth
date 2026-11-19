@@ -32,7 +32,8 @@ app.get("/profile", { middleware: [Auth.protectWith("custom")] }, (ctx) => {
 A strategy settles every request by calling exactly one of:
 
 - `allow(entity)` — authenticates the request; `entity` becomes `ctx.auth` and
-  the middleware chain continues.
+  the middleware chain continues. Pass only what routes need: `ctx.auth` often
+  ends up in responses and logs, so leave out secrets such as password hashes.
 - `deny(reason)` — responds with `401 Unauthorized`. The reason is sent to the
   client, so it must not contain internal details.
 
@@ -61,7 +62,8 @@ Auth.strategy(
   new LocalStrategy(async ({ username, password }, { allow, deny }) => {
     const user = await findUser(username);
     if (user && (await verify(user.passwordHash, password))) {
-      return allow(user);
+      // Not the whole record: it holds the password hash.
+      return allow({ id: user.id, username: user.username });
     }
     deny("wrong username or password");
   }),
@@ -121,10 +123,35 @@ app.get("/profile", { middleware: [auth.protectWith("custom")] }, handler);
 
 ## Development
 
+Install [Vite+](https://viteplus.dev/guide/) and use the pinned Node.js and pnpm
+versions:
+
 ```sh
-deno task check
-deno task test
+vp install
+vp check
+vp test
 ```
+
+`vp check` checks formatting, lint rules, and TypeScript types. `vp test` runs
+the test suite. Use `vp fmt` to format files and `vp lint` to run lint and type
+checks separately.
+
+## Publishing
+
+The package is published as TypeScript source to
+[JSR](https://jsr.io/@huuma/auth). Package metadata, exports, and the publishing
+file list are defined in `jsr.json`; `package.json` configures development
+dependencies and commands. No build step is required.
+
+```sh
+vp run publish:check
+vp run release
+```
+
+`publish:check` validates the package without uploading it. To release a new
+version, update `version` in `jsr.json`. CI runs checks, tests, and a publishing
+dry run for pull requests and pushes to `main`, then publishes pushes to `main`
+using JSR's GitHub OIDC authentication.
 
 ## License
 

@@ -31,7 +31,8 @@ export interface LocalStrategyCredentials {
  *   new LocalStrategy(async ({ username, password }, { allow, deny }) => {
  *     const user = await findUser(username);
  *     if (user && (await verify(user.passwordHash, password))) {
- *       return allow(user);
+ *       // Not the whole record: it holds the password hash.
+ *       return allow({ id: user.id, username: user.username });
  *     }
  *     deny("wrong username or password");
  *   }),
@@ -58,13 +59,15 @@ export class LocalStrategy<T> implements Strategy<T> {
     ctx: RequestContext,
     { allow, deny }: Instructions<T>,
   ): void | Promise<void> {
-    const { username, password } = <Partial<LocalStrategyCredentials>> (
-      ctx.body ?? {}
+    const { username, password } = <Partial<LocalStrategyCredentials>>(
+      (ctx.body ?? {})
     );
 
     if (
-      typeof username === "string" && username.length &&
-      typeof password === "string" && password.length
+      typeof username === "string" &&
+      username.length &&
+      typeof password === "string" &&
+      password.length
     ) {
       return this.handler({ username, password }, { allow, deny });
     }

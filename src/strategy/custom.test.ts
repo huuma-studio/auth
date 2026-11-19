@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { expect, test } from "vite-plus/test";
 import { RequestContext } from "@huuma/route/http/request";
 import { Authenticator, type Strategy } from "../mod.ts";
 import { CustomStrategy } from "./custom.ts";
@@ -6,7 +6,9 @@ import { CustomStrategy } from "./custom.ts";
 function createContext(init?: RequestInit): RequestContext {
   return new RequestContext(
     new Request("https://app.example/protected", init),
-    { remoteAddr: { transport: "tcp", hostname: "127.0.0.1", port: 43210 } },
+    {
+      remoteAddr: { transport: "tcp", hostname: "127.0.0.1", port: 43210 },
+    },
   );
 }
 
@@ -25,7 +27,7 @@ function authenticate<T>(
   });
 }
 
-Deno.test("custom strategy authenticates through Authenticator.protectWith", async () => {
+test("custom strategy authenticates through Authenticator.protectWith", async () => {
   const auth = new Authenticator();
   auth.strategy(
     new CustomStrategy<string>((ctx, { allow, deny }) => {
@@ -39,16 +41,15 @@ Deno.test("custom strategy authenticates through Authenticator.protectWith", asy
     headers: { authorization: "Bearer valid-token" },
   });
 
-  const response = await auth.protectWith("custom")(
-    ctx,
-    () => Promise.resolve(new Response("ok")),
+  const response = await auth.protectWith("custom")(ctx, () =>
+    Promise.resolve(new Response("ok")),
   );
 
-  assertEquals(ctx.auth, "token-user");
-  assertEquals(await response.text(), "ok");
+  expect(ctx.auth).toEqual("token-user");
+  expect(await response.text()).toEqual("ok");
 });
 
-Deno.test("CustomStrategy rejects the request when an async handler throws", async () => {
+test("CustomStrategy rejects the request when an async handler throws", async () => {
   const strategy = new CustomStrategy(async () => {
     await Promise.resolve();
     throw new Error("session store unreachable");
@@ -63,12 +64,9 @@ Deno.test("CustomStrategy rejects the request when an async handler throws", asy
   });
 
   try {
-    await assertRejects(
-      () =>
-        Promise.race([authenticate(strategy, createContext()), neverSettled]),
-      Error,
-      "session store unreachable",
-    );
+    await expect(
+      Promise.race([authenticate(strategy, createContext()), neverSettled]),
+    ).rejects.toThrow("session store unreachable");
   } finally {
     clearTimeout(timeoutId);
   }

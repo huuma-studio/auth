@@ -1,0 +1,14 @@
+{
+  "name": "@huuma/auth",
+  "license": "MIT",
+  "version": "0.4.0",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./strategy/custom": "./src/strategy/custom.ts",
+    "./strategy/local": "./src/strategy/local.ts"
+  },
+  "publish": {
+    "include": ["src", "README.md", "LICENSE.md"],
+    "exclude": ["**/*.test.ts"]
+  }
+}
