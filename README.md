@@ -32,7 +32,8 @@ app.get("/profile", { middleware: [Auth.protectWith("custom")] }, (ctx) => {
 A strategy settles every request by calling exactly one of:
 
 - `allow(entity)` — authenticates the request; `entity` becomes `ctx.auth` and
-  the middleware chain continues.
+  the middleware chain continues. Pass only what routes need: `ctx.auth` often
+  ends up in responses and logs, so leave out secrets such as password hashes.
 - `deny(reason)` — responds with `401 Unauthorized`. The reason is sent to the
   client, so it must not contain internal details.
 
@@ -61,7 +62,8 @@ Auth.strategy(
   new LocalStrategy(async ({ username, password }, { allow, deny }) => {
     const user = await findUser(username);
     if (user && (await verify(user.passwordHash, password))) {
-      return allow(user);
+      // Not the whole record: it holds the password hash.
+      return allow({ id: user.id, username: user.username });
     }
     deny("wrong username or password");
   }),

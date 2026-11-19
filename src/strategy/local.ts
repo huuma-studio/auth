@@ -31,7 +31,8 @@ export interface LocalStrategyCredentials {
  *   new LocalStrategy(async ({ username, password }, { allow, deny }) => {
  *     const user = await findUser(username);
  *     if (user && (await verify(user.passwordHash, password))) {
- *       return allow(user);
+ *       // Not the whole record: it holds the password hash.
+ *       return allow({ id: user.id, username: user.username });
  *     }
  *     deny("wrong username or password");
  *   }),
