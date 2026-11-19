@@ -58,13 +58,15 @@ export class LocalStrategy<T> implements Strategy<T> {
     ctx: RequestContext,
     { allow, deny }: Instructions<T>,
   ): void | Promise<void> {
-    const { username, password } = <Partial<LocalStrategyCredentials>> (
-      ctx.body ?? {}
+    const { username, password } = <Partial<LocalStrategyCredentials>>(
+      (ctx.body ?? {})
     );
 
     if (
-      typeof username === "string" && username.length &&
-      typeof password === "string" && password.length
+      typeof username === "string" &&
+      username.length &&
+      typeof password === "string" &&
+      password.length
     ) {
       return this.handler({ username, password }, { allow, deny });
     }

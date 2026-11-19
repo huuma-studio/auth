@@ -121,10 +121,35 @@ app.get("/profile", { middleware: [auth.protectWith("custom")] }, handler);
 
 ## Development
 
+Install [Vite+](https://viteplus.dev/guide/) and use the pinned Node.js and pnpm
+versions:
+
 ```sh
-deno task check
-deno task test
+vp install
+vp check
+vp test
 ```
+
+`vp check` checks formatting, lint rules, and TypeScript types. `vp test` runs
+the test suite. Use `vp fmt` to format files and `vp lint` to run lint and type
+checks separately.
+
+## Publishing
+
+The package is published as TypeScript source to
+[JSR](https://jsr.io/@huuma/auth). Package metadata, exports, and the publishing
+file list are defined in `jsr.json`; `package.json` configures development
+dependencies and commands. No build step is required.
+
+```sh
+vp run publish:check
+vp run release
+```
+
+`publish:check` validates the package without uploading it. To release a new
+version, update `version` in `jsr.json`. CI runs checks, tests, and a publishing
+dry run for pull requests and pushes to `main`, then publishes pushes to `main`
+using JSR's GitHub OIDC authentication.
 
 ## License
 

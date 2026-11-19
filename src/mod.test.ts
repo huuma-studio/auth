@@ -1,9 +1,4 @@
-import {
-  assertEquals,
-  assertFalse,
-  assertRejects,
-  assertThrows,
-} from "@std/assert";
+import { expect, test } from "vite-plus/test";
 import { RequestContext } from "@huuma/route/http/request";
 import { UnauthorizedException } from "@huuma/route/http/exception/unauthorized-exception";
 import { Auth, Authenticator, type Strategy } from "./mod.ts";
@@ -16,7 +11,7 @@ function createContext(): RequestContext {
 
 const next = () => Promise.resolve(new Response("ok"));
 
-Deno.test("Authenticator.protectWith authenticates the request when the strategy allows", async () => {
+test("Authenticator.protectWith authenticates the request when the strategy allows", async () => {
   const auth = new Authenticator();
   auth.strategy({
     name: "always-allow",
@@ -26,11 +21,11 @@ Deno.test("Authenticator.protectWith authenticates the request when the strategy
 
   const response = await auth.protectWith("always-allow")(ctx, next);
 
-  assertEquals(ctx.auth, { id: "user-1" });
-  assertEquals(await response.text(), "ok");
+  expect(ctx.auth).toEqual({ id: "user-1" });
+  expect(await response.text()).toEqual("ok");
 });
 
-Deno.test("Authenticator.protectWith supports strategies that allow asynchronously", async () => {
+test("Authenticator.protectWith supports strategies that allow asynchronously", async () => {
   const auth = new Authenticator();
   auth.strategy({
     name: "async-allow",
@@ -43,10 +38,10 @@ Deno.test("Authenticator.protectWith supports strategies that allow asynchronous
 
   await auth.protectWith("async-allow")(ctx, next);
 
-  assertEquals(ctx.auth, "session-42");
+  expect(ctx.auth).toEqual("session-42");
 });
 
-Deno.test("Authenticator.strategy returns the instance for chaining", async () => {
+test("Authenticator.strategy returns the instance for chaining", async () => {
   const auth = new Authenticator();
   const first: Strategy<string> = {
     name: "first",
@@ -57,33 +52,32 @@ Deno.test("Authenticator.strategy returns the instance for chaining", async () =
     authenticate: (_ctx, { allow }) => allow("two"),
   };
 
-  assertEquals(auth.strategy(first), auth);
-  assertEquals(auth.strategy(second), auth);
+  expect(auth.strategy(first)).toBe(auth);
+  expect(auth.strategy(second)).toBe(auth);
 
   const firstCtx = createContext();
   const secondCtx = createContext();
   await auth.protectWith("first")(firstCtx, next);
   await auth.protectWith("second")(secondCtx, next);
 
-  assertEquals(firstCtx.auth, "one");
-  assertEquals(secondCtx.auth, "two");
+  expect(firstCtx.auth).toEqual("one");
+  expect(secondCtx.auth).toEqual("two");
 });
 
-Deno.test("Authenticator.protectWith responds unauthorized with the deny reason", async () => {
+test("Authenticator.protectWith responds unauthorized with the deny reason", async () => {
   const auth = new Authenticator();
   auth.strategy({
     name: "always-deny",
     authenticate: (_ctx, { deny }) => deny("invalid api key"),
   });
 
-  await assertRejects(
-    async () => await auth.protectWith("always-deny")(createContext(), next),
-    UnauthorizedException,
-    "invalid api key",
-  );
+  const result = auth.protectWith("always-deny")(createContext(), next);
+
+  await expect(result).rejects.toBeInstanceOf(UnauthorizedException);
+  await expect(result).rejects.toThrow("invalid api key");
 });
 
-Deno.test("Authenticator.protectWith rethrows errors thrown by a strategy unchanged", async () => {
+test("Authenticator.protectWith rethrows errors thrown by a strategy unchanged", async () => {
   const auth = new Authenticator();
   const expected = new Error("database unreachable at 10.0.0.5");
   auth.strategy({
@@ -93,16 +87,12 @@ Deno.test("Authenticator.protectWith rethrows errors thrown by a strategy unchan
     },
   });
 
-  const error = await assertRejects(
-    async () => await auth.protectWith("sync-throw")(createContext(), next),
-    Error,
-    "database unreachable at 10.0.0.5",
-  );
-  assertEquals(error, expected);
-  assertFalse(error instanceof UnauthorizedException);
+  await expect(
+    auth.protectWith("sync-throw")(createContext(), next),
+  ).rejects.toBe(expected);
 });
 
-Deno.test("Authenticator.protectWith rethrows string values thrown by a strategy", async () => {
+test("Authenticator.protectWith rethrows string values thrown by a strategy", async () => {
   const auth = new Authenticator();
   auth.strategy({
     name: "string-throw",
@@ -111,14 +101,12 @@ Deno.test("Authenticator.protectWith rethrows string values thrown by a strategy
     },
   });
 
-  const error = await assertRejects(
-    async () => await auth.protectWith("string-throw")(createContext(), next),
-  );
-
-  assertEquals(error, "session store unreachable at 10.0.0.5");
+  await expect(
+    auth.protectWith("string-throw")(createContext(), next),
+  ).rejects.toBe("session store unreachable at 10.0.0.5");
 });
 
-Deno.test("Authenticator.protectWith rethrows async strategy rejections unchanged", async () => {
+test("Authenticator.protectWith rethrows async strategy rejections unchanged", async () => {
   const auth = new Authenticator();
   const expected = new Error("session lookup failed");
   auth.strategy({
@@ -129,16 +117,12 @@ Deno.test("Authenticator.protectWith rethrows async strategy rejections unchange
     },
   });
 
-  const error = await assertRejects(
-    async () => await auth.protectWith("async-throw")(createContext(), next),
-    Error,
-    "session lookup failed",
-  );
-  assertEquals(error, expected);
-  assertFalse(error instanceof UnauthorizedException);
+  await expect(
+    auth.protectWith("async-throw")(createContext(), next),
+  ).rejects.toBe(expected);
 });
 
-Deno.test("Authenticator.strategy throws when a strategy with the same name is already registered", async () => {
+test("Authenticator.strategy throws when a strategy with the same name is already registered", async () => {
   const auth = new Authenticator();
   const first: Strategy<string> = {
     name: "foo",
@@ -151,28 +135,24 @@ Deno.test("Authenticator.strategy throws when a strategy with the same name is a
 
   auth.strategy(first);
 
-  assertThrows(
-    () => auth.strategy(duplicate),
-    Error,
+  expect(() => auth.strategy(duplicate)).toThrow(
     'A strategy named "foo" is already registered',
   );
 
   const ctx = createContext();
   await auth.protectWith("foo")(ctx, next);
-  assertEquals(ctx.auth, "first");
+  expect(ctx.auth).toEqual("first");
 });
 
-Deno.test("Authenticator.protectWith reports the missing strategy name", () => {
+test("Authenticator.protectWith reports the missing strategy name", () => {
   const auth = new Authenticator();
 
-  assertThrows(
-    () => auth.protectWith("unknown"),
-    Error,
+  expect(() => auth.protectWith("unknown")).toThrow(
     'No strategy registered for "unknown"',
   );
 });
 
-Deno.test("Authenticator instances are isolated", async () => {
+test("Authenticator instances are isolated", async () => {
   const first = new Authenticator();
   const second = new Authenticator();
   first.strategy({
@@ -180,15 +160,13 @@ Deno.test("Authenticator instances are isolated", async () => {
     authenticate: (_ctx, { allow }) => allow("from-first"),
   });
 
-  assertThrows(
-    () => second.protectWith("x"),
-    Error,
+  expect(() => second.protectWith("x")).toThrow(
     'No strategy registered for "x"',
   );
 
   const ctx = createContext();
   await first.protectWith("x")(ctx, next);
-  assertEquals(ctx.auth, "from-first");
+  expect(ctx.auth).toEqual("from-first");
 });
 
 function withSettleGuard<T>(run: () => T | Promise<T>): Promise<T> {
@@ -200,29 +178,26 @@ function withSettleGuard<T>(run: () => T | Promise<T>): Promise<T> {
     );
   });
   return Promise.race([Promise.resolve(run()), neverSettled]).finally(() =>
-    clearTimeout(timeoutId)
+    clearTimeout(timeoutId),
   );
 }
 
-Deno.test("Authenticator.protectWith rejects when a sync strategy returns without settling", async () => {
+test("Authenticator.protectWith rejects when a sync strategy returns without settling", async () => {
   const auth = new Authenticator();
   auth.strategy({
     name: "sync-never-settle",
     authenticate: () => {},
   });
 
-  const error = await assertRejects(
-    () =>
-      withSettleGuard(() =>
-        auth.protectWith("sync-never-settle")(createContext(), next)
-      ),
-    Error,
-    "without calling allow or deny",
+  const result = withSettleGuard(() =>
+    auth.protectWith("sync-never-settle")(createContext(), next),
   );
-  assertFalse(error instanceof UnauthorizedException);
+
+  await expect(result).rejects.toThrow("without calling allow or deny");
+  await expect(result).rejects.not.toBeInstanceOf(UnauthorizedException);
 });
 
-Deno.test("Authenticator.protectWith rejects when an async strategy resolves without settling", async () => {
+test("Authenticator.protectWith rejects when an async strategy resolves without settling", async () => {
   const auth = new Authenticator();
   auth.strategy({
     name: "async-never-settle",
@@ -231,18 +206,15 @@ Deno.test("Authenticator.protectWith rejects when an async strategy resolves wit
     },
   });
 
-  const error = await assertRejects(
-    () =>
-      withSettleGuard(() =>
-        auth.protectWith("async-never-settle")(createContext(), next)
-      ),
-    Error,
-    "without calling allow or deny",
+  const result = withSettleGuard(() =>
+    auth.protectWith("async-never-settle")(createContext(), next),
   );
-  assertFalse(error instanceof UnauthorizedException);
+
+  await expect(result).rejects.toThrow("without calling allow or deny");
+  await expect(result).rejects.not.toBeInstanceOf(UnauthorizedException);
 });
 
-Deno.test("Authenticator.protectWith still authenticates when a strategy rejects after allow", async () => {
+test("Authenticator.protectWith still authenticates when a strategy rejects after allow", async () => {
   const auth = new Authenticator();
   auth.strategy({
     name: "late-reject",
@@ -256,12 +228,12 @@ Deno.test("Authenticator.protectWith still authenticates when a strategy rejects
 
   const response = await auth.protectWith("late-reject")(ctx, next);
 
-  assertEquals(ctx.auth, "user-1");
-  assertEquals(await response.text(), "ok");
+  expect(ctx.auth).toEqual("user-1");
+  expect(await response.text()).toEqual("ok");
 });
 
-Deno.test("Auth is a shared Authenticator instance", async () => {
-  assertEquals(Auth instanceof Authenticator, true);
+test("Auth is a shared Authenticator instance", async () => {
+  expect(Auth).toBeInstanceOf(Authenticator);
 
   Auth.strategy({
     name: "auth-singleton-pin",
@@ -271,6 +243,6 @@ Deno.test("Auth is a shared Authenticator instance", async () => {
 
   const response = await Auth.protectWith("auth-singleton-pin")(ctx, next);
 
-  assertEquals(ctx.auth, "singleton-user");
-  assertEquals(await response.text(), "ok");
+  expect(ctx.auth).toEqual("singleton-user");
+  expect(await response.text()).toEqual("ok");
 });

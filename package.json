@@ -1,0 +1,25 @@
+{
+  "name": "@huuma/auth",
+  "private": true,
+  "description": "Development tooling only. @huuma/auth is published to JSR from jsr.json.",
+  "type": "module",
+  "scripts": {
+    "check": "vp check",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "test": "vp test",
+    "publish:check": "deno publish --dry-run --allow-dirty",
+    "release": "deno publish"
+  },
+  "dependencies": {
+    "@huuma/route": "jsr:^0.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
+  },
+  "packageManager": "pnpm@12.21.0"
+}
